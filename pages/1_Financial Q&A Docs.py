@@ -79,7 +79,7 @@ def search_elser(query_text, es, index):
     # ELSER Query
     query = {
     "text_expansion": {
-      "ml.inference.chunk_expanded.tokens": {
+      "ml.inference.text_expanded.predicted_value": {
         "model_id": ".elser_model_1",
         "model_text": query_text
       }
@@ -104,8 +104,10 @@ def search_elser(query_text, es, index):
                      size=1,
                      source=False)
 
+    st.code(resp)
     body = resp['hits']['hits'][0]['fields']['text'][0]
-    url = resp['hits']['hits'][0]['fields']['url'][0]
+    #url = resp['hits']['hits'][0]['fields']['url'][0]
+    url="unknown"
 
     return body, url
 
@@ -208,7 +210,7 @@ def toLLM(query,
         if negResponse in answer:
             st.markdown(f"AI: {answer.strip()}")
         else:
-            ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String', overwrite=True)
+            ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String',Overwrite=True)
             st.markdown(f"AI: {answer.strip()}\n\nDocs: {url}")
     else:
         st.markdown(f"AI: {answer.strip()}")
