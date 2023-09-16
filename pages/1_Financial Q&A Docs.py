@@ -255,7 +255,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<p class="small-font">Example Searches:</p>', unsafe_allow_html=True)
-st.markdown('<p class="small-font">Show me the API call for a redact processor<br>I want to secure my elastic cluster<br>run Elasticsearch with security enabled</p>', unsafe_allow_html=True)
+st.markdown('<p class="small-font">What are taxes<br></p>', unsafe_allow_html=True)
 with st.form("chat_form"):
     query = st.text_input("What can I help you with: ")
     b1, b2 = st.columns(2)

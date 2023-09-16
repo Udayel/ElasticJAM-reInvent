@@ -17,7 +17,7 @@ from cohere_sagemaker import Client
 # AWS / SageMaker Settings
 flan_t5_endpoint_name = os.environ["FLAN_T5_ENDPOINT"]
 aws_region = os.environ["AWS_REGION"]
-max_tokens=2048
+max_tokens=4000
 max_context_tokens=4000
 safety_margin=5
 
@@ -74,12 +74,10 @@ def es_connect(cid, user, passwd):
 
 
 # Search ElasticSearch index and return body and URL of the result
-def search(query_text, index_name):
+def search(query_text, es, index_name):
 
     
     print("Query text is", query_text)
-    es = es_connect(cid, cu, cp)
-
     
 
     # Elasticsearch query (BM25) and kNN configuration for hybrid search
@@ -144,7 +142,7 @@ def toLLM(query,
     # Set prompt and add ES contest if required
     if index:
         es = es_connect(cid, cu, cp)
-        resp, url = search_elser(query, es, index)
+        resp, url = search(query, es, index)
         resp = truncate_text(resp, max_context_tokens - max_tokens - safety_margin)
         prompt = f"Answer this question: {query}\n using only the information from this Elastic Doc: {resp}"
         with st.expander("Source Document From Elasticsearch"):
@@ -223,7 +221,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<p class="small-font">Example Searches:</p>', unsafe_allow_html=True)
-st.markdown('<p class="small-font">Show me the API call for a redact processor<br>I want to secure my elastic cluster<br>run Elasticsearch with security enabled</p>', unsafe_allow_html=True)
+st.markdown('<p class="small-font">What is a URL?<br></p>', unsafe_allow_html=True)
 with st.form("chat_form"):
     query = st.text_input("What can I help you with: ")
     b1, b2 = st.columns(2)
