@@ -1,6 +1,6 @@
-export ES_EMBEDDING_MODEL_ID="<Elasticsearch Embedding Model"
+#export ES_EMBEDDING_MODEL_ID="<Elasticsearch Embedding Model"
 export ES_CLOUD_ID="<Elastic Cloud ID>"
-export ES_INDEX="<Elastic Index Name>"
+#export ES_INDEX="<Elastic Index Name>"
 export ES_USERNAME="<Elasticsearch user name>"
 export ES_PASSWORD="<Elasticsearch Password>"
 export FLAN_T5_ENDPOINT="<SageMaker Endpoint Name>"
