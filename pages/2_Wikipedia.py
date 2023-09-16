@@ -27,15 +27,17 @@ safety_margin=5
 cid = os.environ['ES_CLOUD_ID']
 cp = os.environ['ES_PASSWORD']
 cu = os.environ['ES_USERNAME']
+es_model_id = 'multilingual-e5-base'
 
 # ES Datsets Options
 #ES_DATASETS = {
 #        'Elastic Documentation' : 'search-elastic-docs',
 #        }
 
-
 #LLM_LIST: List[str] = ["Flan-T5-XL"]
+llm_model = 'Flan-T5-XL'
 
+es_index = 'search-wikipedia-e5-multilingual'
 
 ## SageMaker 
 
@@ -70,6 +72,7 @@ def es_connect(cid, user, passwd):
     print("Connection is", es)
     return es
 
+
 # Search ElasticSearch index and return body and URL of the result
 def search(query_text, index_name):
 
@@ -77,21 +80,21 @@ def search(query_text, index_name):
     print("Query text is", query_text)
     es = es_connect(cid, cu, cp)
 
-    #make call to _infer
     
+
     # Elasticsearch query (BM25) and kNN configuration for hybrid search
-    query = {
-        "bool": {
-            "must": [{
-                "match": {
-                    "title": {
-                        "query": query_text,
-                        "boost": 1
-                    }
-                }
-            }]
-        }
-    }
+ #   query = {
+ #       "bool": {
+ #           "must": [{
+ #               "match": {
+ #                   "title": {
+ #                       "query": query_text,
+ #                       "boost": 1
+ #                   }
+ #               }
+ #           }]
+ #       }
+ #   }
 
     knn = {
         "field": "ml.predicted_value",
@@ -99,24 +102,29 @@ def search(query_text, index_name):
         "num_candidates": 20,
         "query_vector_builder": {
             "text_embedding": {
-                "model_id": "sentence-transformers__all-distilroberta-v1",
-                "model_text": query_text
+                "model_id": es_model_id,
+                "model_text": f"query: {query_text}"
             }
-        },
-        "boost": 24
+        }
+#        ,"boost": 24
     }
 
-    fields = ["title", "body_content", "url"]
+
+    fields = ["title", 
+              "text_field"
+             ]
     index = index_name
     resp = es.search(index=index,
-                     query=query,
+#                     query=query,
                      knn=knn,
                      fields=fields,
                      size=1,
                      source=False)
 
-    body = resp['hits']['hits'][0]['fields']['body_content'][0]
-    url = resp['hits']['hits'][0]['fields']['url'][0]
+    st.code(resp)
+
+    body = resp['hits']['hits'][0]['fields']['text_field'][0]
+    url = resp['hits']['hits'][0]['fields']['title'][0]
 
     return body, url
 
@@ -130,12 +138,13 @@ def truncate_text(text, max_tokens):
 
 def toLLM(query,
         llm_model,
-        index=False,
+        index=False
     ):
 
     # Set prompt and add ES contest if required
     if index:
-        resp, url = search(query, ES_DATASETS[es_index])
+        es = es_connect(cid, cu, cp)
+        resp, url = search_elser(query, es, index)
         resp = truncate_text(resp, max_context_tokens - max_tokens - safety_margin)
         prompt = f"Answer this question: {query}\n using only the information from this Elastic Doc: {resp}"
         with st.expander("Source Document From Elasticsearch"):
@@ -169,7 +178,7 @@ def toLLM(query,
         if negResponse in answer:
             st.markdown(f"AI: {answer.strip()}")
         else:
-            ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String', Overwrite=True)
+            ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String',Overwrite=True)
             st.markdown(f"AI: {answer.strip()}\n\nDocs: {url}")
     else:
         st.markdown(f"AI: {answer.strip()}")
@@ -197,9 +206,9 @@ st.sidebar.markdown("""
 
 st.title("ElasticAWSJam AI Assistant")
 
-with st.sidebar.expander("Assistant Options", expanded=True):
-    es_index = st.selectbox(label='Select Your Dataset for Context', options=ES_DATASETS.keys())
-    llm_model = st.selectbox(label='Choose Large Language Model', options=LLM_LIST)
+#with st.sidebar.expander("Assistant Options", expanded=True):
+#    es_index = st.selectbox(label='Select Your Dataset for Context', options=ES_DATASETS.keys())
+#    llm_model = st.selectbox(label='Choose Large Language Model', options=LLM_LIST)
 
 
 print("Selected LLM Model is:",llm_model)
@@ -231,5 +240,5 @@ if search_no_context:
     toLLM(query, llm_model)
 
 if search_context:
-    toLLM(query, llm_model, ES_DATASETS[es_index])
+    toLLM(query, llm_model, es_index)
 
