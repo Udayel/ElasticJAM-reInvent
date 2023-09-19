@@ -1,10 +1,27 @@
 import os
 from elasticsearch import Elasticsearch
 import boto3
+import botocore
+from pprint import pprint
 
+
+### Elastic Settings
+
+#cluster Settings
 cid = os.environ['ES_CLOUD_ID']
-cu = os.environ['ES_USERNAME']
 cp = os.environ['ES_PASSWORD']
+cu = os.environ['ES_USERNAME']
+es_model_id = 'multilingual-e5-base'
+
+# ES Datsets Options
+#ES_DATASETS = {
+#        'Elastic Documentation' : 'search-elastic-docs',
+#        }
+
+
+es_index = 'search-fiqa-ml'
+
+## SageMaker 
 
 # Create a session with AWS
 session = boto3.Session()
@@ -13,11 +30,10 @@ session = boto3.Session()
 ssm_client = session.client('ssm')
 
 # The name of the variable to write
-variable_name = '/jam/elastic/task3status'
+variable_name = '/jam/elastic/task1status'
 
 # The value of the variable
 variable_value = 'Completed'
-
 
 
 # Connect to Elastic Cloud cluster
@@ -26,59 +42,56 @@ def es_connect(cid, user, passwd):
     return es
 
 
-# Elastic Hybrid search query
-def search(query_text):
-
-    es = es_connect(cid, cu, cp)
-
-    # Textual search
-    query = {
-        "bool": {
-            "must": [{
-                "match": {
-                    "title": {
-                        "query": query_text,
-                        "boost": 1
-                    }
-                }
-            }]
-        }
-    }
-
-
-    # Vector search
-    knn = {
-        "field": "title-vector",
-        "k": 1,
-        "num_candidates": 20,
-        "query_vector_builder": {
-            "text_embedding": {
-                "model_id": "1",
-                "model_text": query_text
-            }
-        },
-        "boost": 24
-    }
-
-    fields = ["title", "body_content", "url"]
-    index = 'search-elastic-docs'
+# Search ElasticSearch index and return body and URL of the result
+def search(query_text, index_name, es):
     
-    #hybrid search
+    print("Query text is", query_text)
+    
+
+    query = {
+      "bool": {
+        "should": [
+          {
+            "match": {
+              "text": {
+                "query": query_text,
+                "boost": 0.01
+              }
+            }
+          },
+          {
+            "text_expansion": {
+              "ml.inference.text_expanded.predicted_value": {
+                "model_id": ".elser_model_1",
+                "model_text": query_text
+              }
+            }
+          }
+        ]
+      }
+    }
+
+
+    fields = ["text", 
+             ]
+
+    index = index_name
     resp = es.search(index=index,
                      query=query,
-                     knn=knn,
                      fields=fields,
                      size=1,
                      source=False)
 
-    
-    body = resp['hits']['hits'][0]['fields']['body_content'][0]
-    url = resp['hits']['hits'][0]['fields']['url'][0]
+    body = resp['hits']['hits'][0]['fields']['text'][0]
 
-    return body, url
+    return body
 
+
+es = es_connect(cid, cu, cp)
+
+print('\n\n-----------------------------------------')
 query_text = input("Enter Domain specific question: ")
-body, url = search(query_text)
-ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String')
-print("The content is: ", body)
-print("The source URL is: ", url)
+body = search(query_text, es_index, es)
+ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String', Overwrite=True)
+print("\n\nThe content from Elasticsearch is: ")
+pprint(body)
