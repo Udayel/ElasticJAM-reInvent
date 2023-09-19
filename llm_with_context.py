@@ -1,18 +1,12 @@
-from langchain.chains import RetrievalQA
-from langchain.chains import LLMChain
-from langchain import OpenAI
-from langchain.prompts import PromptTemplate
-from langchain import SagemakerEndpoint
-from langchain.llms.sagemaker_endpoint import LLMContentHandler
+import boto3
+import botocore
 import json
 import os
 import streamlit as st
 from elasticsearch import Elasticsearch
-from typing import List, Tuple, Dict
-from langchain.llms.bedrock import Bedrock
-import boto3
-import botocore
-from cohere_sagemaker import Client
+from langchain import SagemakerEndpoint
+from langchain.llms.sagemaker_endpoint import LLMContentHandler
+
 
 # AWS / SageMaker Settings
 flan_t5_endpoint_name = os.environ["FLAN_T5_ENDPOINT"]
@@ -29,14 +23,7 @@ cp = os.environ['ES_PASSWORD']
 cu = os.environ['ES_USERNAME']
 es_model_id = 'multilingual-e5-base'
 
-# ES Datsets Options
-#ES_DATASETS = {
-#        'Elastic Documentation' : 'search-elastic-docs',
-#        }
-
-#LLM_LIST: List[str] = ["Flan-T5-XL"]
 llm_model = 'Flan-T5-XL'
-
 es_index = 'search-fiqa-ml'
 
 ## SageMaker 
@@ -172,7 +159,6 @@ def toLLM(query,
             st.markdown(f"AI: {answer.strip()}")
         else:
             ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String',Overwrite=True)
-            #st.markdown(f"AI: {answer.strip()}\n\nDocs: {url}")
             st.markdown(f"`AI`: {answer.strip()}")
     else:
         st.markdown(f"`AI`: {answer.strip()}")
@@ -200,10 +186,6 @@ st.sidebar.markdown("""
 
 st.title("ElasticAWSJam AI Assistant")
 
-#with st.sidebar.expander("Assistant Options", expanded=True):
-#    es_index = st.selectbox(label='Select Your Dataset for Context', options=ES_DATASETS.keys())
-#    llm_model = st.selectbox(label='Choose Large Language Model', options=LLM_LIST)
-
 
 print("Selected LLM Model is:",llm_model)
 
@@ -217,22 +199,16 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<p class="small-font">Example Searches:</p>', unsafe_allow_html=True)
-st.markdown('<p class="small-font">Which colors can one use to fill out a check in the US?<br>How is taxation for youtube/twitch etc monetization handled in the UK?<br>Why do gas stations charge different amounts in the same local area?</p>', unsafe_allow_html=True)
+st.markdown('<p class="small-font">Which colors can one use to fill out a check in the US?<br>How is taxation for youtube/twitch etc monetization handled in the UK?<br></p>', unsafe_allow_html=True)
+
 with st.form("chat_form"):
     query = st.text_input("What can I help you with: ")
-    #b1, b2 = st.columns(2)
-    #with b1:
-    #    search_no_context = st.form_submit_button("Search Without Context")
-    #with b2:
-    #    search_context = st.form_submit_button("Search With Context")
     search_context = st.form_submit_button("Search With Context")
 
 
 # Generate and display response on form submission
 negResponse = "I'm unable to answer the question based on the information I have from Context."
 
-#if search_no_context:
-#    toLLM(query, llm_model)
 
 if search_context:
     toLLM(query, llm_model, es_index)
