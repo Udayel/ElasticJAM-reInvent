@@ -139,3 +139,4 @@ secrets.toml
 poetry*
 replit*
 pyproject.toml
+*-old

@@ -12,16 +12,34 @@ from typing import List, Tuple, Dict
 from langchain.llms.bedrock import Bedrock
 import boto3
 import botocore
+from cohere_sagemaker import Client
 
-#Environment variables
+# AWS / SageMaker Settings
 flan_t5_endpoint_name = os.environ["FLAN_T5_ENDPOINT"]
 aws_region = os.environ["AWS_REGION"]
-
-max_tokens=1024
+max_tokens=4000
 max_context_tokens=4000
 safety_margin=5
 
-LLM_LIST: List[str] = ["Flan-T5-XL"]
+### Elastic Settings
+
+#cluster Settings
+cid = os.environ['ES_CLOUD_ID']
+cp = os.environ['ES_PASSWORD']
+cu = os.environ['ES_USERNAME']
+es_model_id = 'multilingual-e5-base'
+
+# ES Datsets Options
+#ES_DATASETS = {
+#        'Elastic Documentation' : 'search-elastic-docs',
+#        }
+
+#LLM_LIST: List[str] = ["Flan-T5-XL"]
+llm_model = 'Flan-T5-XL'
+
+es_index = 'search-wikipedia-e5-multilingual'
+
+## SageMaker 
 
 # Create a session with AWS
 session = boto3.Session()
@@ -30,7 +48,7 @@ session = boto3.Session()
 ssm_client = session.client('ssm')
 
 # The name of the variable to write
-variable_name = '/jam/elastic/task2status'
+variable_name = '/jam/elastic/task1status'
 
 # The value of the variable
 variable_value = 'Completed'
@@ -49,44 +67,91 @@ class ContentHandlerFlan(LLMContentHandler):
 
 
 
-st.title("Anycompany AI Assistant")
+def truncate_text(text, max_tokens):
+    tokens = text.split()
+    if len(tokens) <= max_tokens:
+        return text
 
-with st.sidebar.expander("⚙️", expanded=True):
-    llm_model = st.selectbox(label='Large Language Model', options=LLM_LIST)
-
-endpoint_name = flan_t5_endpoint_name
-content_handler = ContentHandlerFlan()
-
+    return ' '.join(tokens[:max_tokens])
 
 
-# Main chat form
-with st.form("chat_form"):
-    query = st.text_input("You: ")
-    submit_button = st.form_submit_button("Send")
+def toLLM(query,
+        llm_model,
+    ):
+
+    prompt = f"Answer this question: {query}"
+    print('prompt is: ',prompt)
 
 
-# Generate and display response on form submission
-negResponse = "I'm unable to answer the question"
-if submit_button:
-    prompt_without_context = f"Answer this question: \n"
+    # Call LLM
+    if llm_model == "Flan-T5-XL":
+        endpoint_name = flan_t5_endpoint_name
+        content_handler = ContentHandlerFlan()
 
-    prompt = prompt_without_context
-
-
-    llm=SagemakerEndpoint(
+        llm=SagemakerEndpoint(
                 endpoint_name=endpoint_name,
                 region_name=aws_region, 
-                model_kwargs={"temperature":1, "max_length": 500},
+                model_kwargs={"temperature":1, "max_length": max_tokens},
                 content_handler=content_handler
-            )
+        )
 
-    answer = llm(prompt)
+        answer = llm(prompt)
+    else:
+        answer = "Not available. Please select LLM"
+
     print("Answer is",answer)
 
-    ####stopping here
     
-    if negResponse in answer:
-        st.write(f"AI: {answer.strip()}")
-    else:
-        ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String')
-        st.write(f"AI: {answer.strip()}")
+    # Print respose
+    st.markdown(f"AI: {answer.strip()}")
+
+
+## Main
+st.set_page_config(
+     page_title="AI Assistant",
+     page_icon="🧠",
+#     layout="wide"
+)
+
+
+st.sidebar.markdown("""
+ <style>
+     [data-testid=stSidebar] [data-testid=stImage]{
+         text-align: center;
+         display: block;
+         margin-left: auto;
+         margin-right: auto;
+         width: 100%;
+     }
+ </style>
+ """, unsafe_allow_html=True)
+
+st.title("ElasticAWSJam AI Assistant")
+
+#with st.sidebar.expander("Assistant Options", expanded=True):
+#    es_index = st.selectbox(label='Select Your Dataset for Context', options=ES_DATASETS.keys())
+#    llm_model = st.selectbox(label='Choose Large Language Model', options=LLM_LIST)
+
+
+print("Selected LLM Model is:",llm_model)
+
+# Streamlit Form
+st.markdown("""
+        <style>
+        .small-font {
+            font-size:12px !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+st.markdown('<p class="small-font">Example Searches:</p>', unsafe_allow_html=True)
+st.markdown('<p class="small-font">Which colors can one use to fill out a check in the US?<br>How is taxation for youtube/twitch etc monetization handled in the UK?<br>Why do gas stations charge different amounts in the same local area?</p>', unsafe_allow_html=True)
+with st.form("chat_form"):
+    query = st.text_input("What can I help you with: ")
+    search_no_context = st.form_submit_button("Search Without Context")
+
+# Generate and display response on form submission
+negResponse = "I'm unable to answer the question based on the information I have from Context."
+
+if search_no_context:
+    toLLM(query, llm_model)

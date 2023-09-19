@@ -37,7 +37,7 @@ es_model_id = 'multilingual-e5-base'
 #LLM_LIST: List[str] = ["Flan-T5-XL"]
 llm_model = 'Flan-T5-XL'
 
-es_index = 'search-fiqa-ml'
+es_index = 'search-wikipedia-e5-multilingual'
 
 ## SageMaker 
 
@@ -66,60 +66,6 @@ class ContentHandlerFlan(LLMContentHandler):
             return response_json["generated_texts"][0]
 
 
-# Connect to Elastic Cloud cluster
-def es_connect(cid, user, passwd):
-    es = Elasticsearch(cloud_id=cid, http_auth=(user, passwd))
-    print("Connection is", es)
-    return es
-
-
-# Search ElasticSearch index and return body and URL of the result
-def search(query_text, es, index_name):
-
-    
-    '''Using ELSER -
-       Search ElasticSearch index and return body and URL of the result'''
-
-    query = {
-      "bool": {
-        "should": [
-          {
-            "match": {
-              "text": {
-                "query": query_text,
-                "boost": 0.01
-              }
-            }
-          },
-          {
-            "text_expansion": {
-              "ml.inference.text_expanded.predicted_value": {
-                "model_id": ".elser_model_1",
-                "model_text": query_text
-              }
-            }
-          }
-        ]
-      }
-    }
-
-
-    fields = ["text", 
-             ]
-
-    index = index_name
-    resp = es.search(index=index,
-                     query=query,
-                     fields=fields,
-                     size=1,
-                     source=False)
-
-    body = resp['hits']['hits'][0]['fields']['text'][0]
-
-    url=''
-
-    return body, url
-
 
 def truncate_text(text, max_tokens):
     tokens = text.split()
@@ -131,19 +77,9 @@ def truncate_text(text, max_tokens):
 
 def toLLM(query,
         llm_model,
-        index=False
     ):
 
-    # Set prompt and add ES contest if required
-    if index:
-        es = es_connect(cid, cu, cp)
-        resp, url = search(query, es, index)
-        resp = truncate_text(resp, max_context_tokens - max_tokens - safety_margin)
-        prompt = f"Answer this question: {query}\n using only the information from this Elastic Doc: {resp}"
-        with st.expander("Source Document From Elasticsearch"):
-            st.markdown(resp)
-    else:
-        prompt = f"Answer this question: {query}"
+    prompt = f"Answer this question: {query}"
     print('prompt is: ',prompt)
 
 
@@ -167,15 +103,7 @@ def toLLM(query,
 
     
     # Print respose
-    if index:
-        if negResponse in answer:
-            st.markdown(f"AI: {answer.strip()}")
-        else:
-            ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String',Overwrite=True)
-            #st.markdown(f"AI: {answer.strip()}\n\nDocs: {url}")
-            st.markdown(f"`AI`: {answer.strip()}")
-    else:
-        st.markdown(f"`AI`: {answer.strip()}")
+    st.markdown(f"AI: {answer.strip()}")
 
 
 ## Main
@@ -217,23 +145,12 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.markdown('<p class="small-font">Example Searches:</p>', unsafe_allow_html=True)
-st.markdown('<p class="small-font">Which colors can one use to fill out a check in the US?<br>How is taxation for youtube/twitch etc monetization handled in the UK?<br>Why do gas stations charge different amounts in the same local area?</p>', unsafe_allow_html=True)
+st.markdown('<p class="small-font">Income Tax and Investments<br>Which colors can one use to fill out a check in the US?<br>How is taxation for youtube/twitch etc monetization handled in the UK?<br>Why do gas stations charge different amounts in the same local area?</p>', unsafe_allow_html=True)
 with st.form("chat_form"):
     query = st.text_input("What can I help you with: ")
-    #b1, b2 = st.columns(2)
-    #with b1:
-    #    search_no_context = st.form_submit_button("Search Without Context")
-    #with b2:
-    #    search_context = st.form_submit_button("Search With Context")
-    search_context = st.form_submit_button("Search With Context")
-
+    search_no_context = st.form_submit_button("Search Without Context")
 
 # Generate and display response on form submission
 negResponse = "I'm unable to answer the question based on the information I have from Context."
 
-#if search_no_context:
-#    toLLM(query, llm_model)
-
-if search_context:
-    toLLM(query, llm_model, es_index)
-
+toLLM(query, llm_model)
