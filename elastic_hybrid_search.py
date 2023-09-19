@@ -13,12 +13,6 @@ cp = os.environ['ES_PASSWORD']
 cu = os.environ['ES_USERNAME']
 es_model_id = 'multilingual-e5-base'
 
-# ES Datsets Options
-#ES_DATASETS = {
-#        'Elastic Documentation' : 'search-elastic-docs',
-#        }
-
-
 es_index = 'search-fiqa-ml'
 
 ## SageMaker 
@@ -90,7 +84,9 @@ def search(query_text, index_name, es):
 es = es_connect(cid, cu, cp)
 
 print('\n\n-----------------------------------------')
-query_text = input("Enter Domain specific question: ")
+print("Enter Domain specific question \nexamples (Which colors can one use to fill out a check in the US?\nHow is taxation for youtube/twitch etc monetization handled in the UK?)")
+query_text = input("Your Question > ")
+
 body = search(query_text, es_index, es)
 ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String', Overwrite=True)
 print("\n\nThe content from Elasticsearch is: ")
