@@ -21,6 +21,7 @@ cid = os.environ['ES_CLOUD_ID']
 cp = os.environ['ES_PASSWORD']
 cu = os.environ['ES_USERNAME']
 es_model_id = 'multilingual-e5-base'
+region=os.environ['AWS_REGION']
 
 # ES Datsets Options
 #ES_DATASETS = {
@@ -35,10 +36,11 @@ es_index = 'search-wikipedia-e5-multilingual'
 ## SageMaker 
 
 # Create a session with AWS
-session = boto3.Session()
+#session = boto3.Session()
 
 # Get the SSM client
-ssm_client = session.client('ssm')
+#ssm_client = session.client('ssm')
+ssm_client = boto3.client('ssm',region_name=region)
 
 # The name of the variable to write
 variable_name = '/jam/elastic/task1status'
