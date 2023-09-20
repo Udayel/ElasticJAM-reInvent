@@ -98,7 +98,6 @@ def toLLM(query,
     # Print respose
     ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String',Overwrite=True)
     st.markdown(f"AI: {answer.strip()}")
-    ssm_client.put_parameter(Name=variable_name, Value=variable_value, Type='String')
 
 
 
