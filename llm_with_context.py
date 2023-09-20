@@ -25,17 +25,19 @@ es_model_id = 'multilingual-e5-base'
 
 llm_model = 'Flan-T5-XL'
 es_index = 'search-fiqa-ml'
+region=os.environ['AWS_REGION']
 
 ## SageMaker 
 
 # Create a session with AWS
-session = boto3.Session()
+#session = boto3.Session()
 
 # Get the SSM client
-ssm_client = session.client('ssm')
+#ssm_client = session.client('ssm')
+ssm_client = boto3.client('ssm',region_name=region)
 
 # The name of the variable to write
-variable_name = '/jam/elastic/task1status'
+variable_name = '/jam/elastic/task3status'
 
 # The value of the variable
 variable_value = 'Completed'
