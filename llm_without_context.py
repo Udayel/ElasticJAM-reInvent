@@ -74,7 +74,7 @@ def toLLM(query,
         llm_model,
     ):
 
-    prompt = f"Answer this question: {query}"
+    prompt = f"Answer this query in complete sentence. {query}"
     print('prompt is: ',prompt)
 
 
