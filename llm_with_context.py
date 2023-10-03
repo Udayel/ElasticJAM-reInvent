@@ -128,7 +128,7 @@ def toLLM(query,
         es = es_connect(cid, cu, cp)
         resp, url = search(query, es, index)
         resp = truncate_text(resp, max_context_tokens - max_tokens - safety_margin)
-        prompt = f"Answer this query in complete sentence {query}\n using only the information from this Elastic Doc: {resp}"
+        prompt = f"Answer this question in complete sentence using only the information from this Elastic Doc: {resp}.question:{query}"
         with st.expander("Source Document From Elasticsearch"):
             st.markdown(resp)
     else:
